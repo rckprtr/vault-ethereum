@@ -144,6 +144,11 @@ Queries the Ethereum blockchain (chain_id) for the balance of an account.
 					Description: "The gas price for the transaction in wei.",
 					Default:     "0",
 				},
+				"tx_data": &framework.FieldSchema{
+					Type:        framework.TypeString,
+					Description: "JSON string representation of the transaction",
+					Default:     "",
+				},
 			},
 			ExistenceCheck: b.pathExistenceCheck,
 			Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -165,7 +170,7 @@ Hash and sign data using a given Ethereum account.
 				},
 				"raw": &framework.FieldSchema{
 					Type:        framework.TypeBool,
-					Default: false,
+					Default:     false,
 					Description: "if true, data is expected to be raw hashed transaction data in hex encoding - won't hash prior to signing",
 				},
 			},
@@ -189,7 +194,7 @@ Validate that this account signed some data.
 				},
 				"raw": &framework.FieldSchema{
 					Type:        framework.TypeBool,
-					Default: false,
+					Default:     false,
 					Description: "if true, data is expected to be raw hashed transaction data in hex encoding - won't hash prior to signing",
 				},
 				"signature": &framework.FieldSchema{
@@ -353,7 +358,7 @@ func (b *backend) pathAccountsList(ctx context.Context, req *logical.Request, da
 
 func (b *backend) pathSign(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	var hash []byte
-	if (data.Get("raw").(bool)) {
+	if data.Get("raw").(bool) {
 		input := data.Get("data").(string)
 		var err error
 		hash, err = hexutil.Decode(input)
@@ -390,7 +395,7 @@ func (b *backend) pathSign(ctx context.Context, req *logical.Request, data *fram
 
 func (b *backend) pathVerify(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	var hash []byte
-	if (data.Get("raw").(bool)) {
+	if data.Get("raw").(bool) {
 		input := data.Get("data").(string)
 		var err error
 		hash, err = hexutil.Decode(input)
@@ -435,6 +440,8 @@ func (b *backend) pathDebit(ctx context.Context, req *logical.Request, data *fra
 	gasLimitIn := math.MustParseBig256(data.Get("gas_limit").(string))
 	gasPriceIn := math.MustParseBig256(data.Get("gas_price").(string))
 	toAddress := common.HexToAddress(data.Get("to").(string))
+	tx_data := []byte(data.Get("tx_data").(string))
+
 	account, err := b.readAccount(ctx, req, prunedPath)
 	if err != nil {
 		return nil, err
@@ -452,7 +459,7 @@ func (b *backend) pathDebit(ctx context.Context, req *logical.Request, data *fra
 	if !allowed {
 		return nil, err
 	}
-	gasLimit, gasPrice, err := b.getEstimates(client, ctx, fromAddress, &toAddress, nil, nil)
+	gasLimit, gasPrice, err := b.getEstimates(client, ctx, fromAddress, &toAddress, tx_data, nil)
 	if gasLimitIn.Cmp(&big.Int{}) != 0 {
 		gasLimit = gasLimitIn.Uint64()
 	}
@@ -481,7 +488,7 @@ func (b *backend) pathDebit(ctx context.Context, req *logical.Request, data *fra
 		return nil, err
 	}
 
-	rawTx = types.NewTransaction(nonce, toAddress, amount, gasLimit, gasPrice, nil)
+	rawTx = types.NewTransaction(nonce, toAddress, amount, gasLimit, gasPrice, tx_data)
 	signedTx, err := transactor.Signer(types.NewEIP155Signer(chainID), common.HexToAddress(account.Address), rawTx)
 	if err != nil {
 		return nil, err

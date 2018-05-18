@@ -615,7 +615,7 @@ This endpoint will debit an Ethereum account.
 * `value` (`string: <required>`) - The amount of ether - in wei.
 * `gas_price` (`string: <optional>`) - The price in gas for the transaction. If omitted, we will use the suggested gas price.
 * `gas_limit` (`string: <optional>`) - The gas limit for the transaction. If omitted, we will estimate the gas limit.
-
+* `data` (`string: <optional>`) - Payload of data used for smart contracts.
 #### Sample Payload
 
 The following sends 10 ETH to `0xa152E7a09267bcFf6C33388cAab403b76B889939`.
